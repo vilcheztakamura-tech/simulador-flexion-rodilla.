@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulador Clínico de Flexión de Rodilla | UTP</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+    input[type="range"] {
+      accent-color: #0f766e;
+      cursor: pointer;
+    }
+    .canvas-container {
+      position: relative;
+      width: 100%;
+      height: 410px;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body class="antialiased">
+  <!-- Encabezado académico y clínico -->
+  <header class="bg-gradient-to-r from-slate-900 via-blue-950 to-teal-900 text-white shadow-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <div>
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/20 border border-teal-400/30 text-teal-200 text-xs font-semibold mb-2">
+          <span>Matemática para Ciencias de la Salud • UTP</span>
+        </div>
+        <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight">
+          Simulador Biomecánico de Flexión de Rodilla en Rehabilitación
+        </h1>
+        <p class="text-slate-300 text-xs sm:text-sm mt-1">
+          Modelamiento trigonométrico periódico <span class="font-mono text-teal-300 font-semibold">&theta;(t) = A &middot; cos(B&middot;t + C) + D</span> y seguimiento longitudinal (2015–2026)
+        </p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <button id="btnResetBase" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white text-xs sm:text-sm font-semibold shadow transition flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+          Restaurar modelo base (30cos(2&pi;t + &pi;) + 35)
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <!-- Barra de ecuación actual y tarjetas de indicadores clínicos -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-slate-100">
+        <div>
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Ecuación activa del modelo</span>
+          <div id="equationDisplay" class="text-lg sm:text-2xl font-bold text-blue-950 font-mono mt-0.5">
+            &theta;(t) = 30 &middot; cos(2&pi;t + &pi;) + 35
+          </div>
+        </div>
+        <div id="clinicalAlertBadge" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs sm:text-sm font-medium">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>Rango seguro sin hiperextensión (&theta;<sub>mín</sub> &ge; 0&deg;)</span>
+        </div>
+      </div>
+
+      <!-- KPIs numéricos -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-4">
+        <div class="bg-slate-50 rounded-xl p-3 border border-slate-100">
+          <div class="text-xs text-slate-500 font-medium">Ángulo mínimo (&theta;<sub>mín</sub>)</div>
+          <div id="kpiMin" class="text-lg sm:text-xl font-bold text-emerald-700 mt-0.5">5.0&deg;</div>
+          <div class="text-[11px] text-slate-400">Apoyo inicial</div>
+        </div>
+        <div class="bg-slate-50 rounded-xl p-3 border border-slate-100">
+          <div class="text-xs text-slate-500 font-medium">Línea media (D)</div>
+          <div id="kpiMid" class="text-lg sm:text-xl font-bold text-blue-900 mt-0.5">35.0&deg;</div>
+          <div class="text-[11px] text-slate-400">Equilibrio central</div>
+        </div>
+        <div class="bg-slate-50 rounded-xl p-3 border border-slate-100">
+          <div class="text-xs text-slate-500 font-medium">Ángulo máximo (&theta;<sub>máx</sub>)</div>
+          <div id="kpiMax" class="text-lg sm:text-xl font-bold text-rose-600 mt-0.5">65.0&deg;</div>
+          <div class="text-[11px] text-slate-400">Balanceo funcional</div>
+        </div>
+        <div class="bg-slate-50 rounded-xl p-3 border border-slate-100">
+          <div class="text-xs text-slate-500 font-medium">Amplitud (A)</div>
+          <div id="kpiAmp" class="text-lg sm:text-xl font-bold text-slate-800 mt-0.5">30.0&deg;</div>
+          <div class="text-[11px] text-slate-400">ROM total: <span id="kpiRom">60.0&deg;</span></div>
+        </div>
+        <div class="bg-slate-50 rounded-xl p-3 border border-slate-100">
+          <div class="text-xs text-slate-500 font-medium">Período (T)</div>
+          <div id="kpiPeriod" class="text-lg sm:text-xl font-bold text-indigo-700 mt-0.5">1.00 s</div>
+          <div class="text-[11px] text-slate-400">B = <span id="kpiFreqB">2&pi; rad/s</span></div>
+        </div>
+        <div class="bg-teal-50/70 rounded-xl p-3 border border-teal-200">
+          <div class="text-xs text-teal-800 font-medium">Instante actual (t)</div>
+          <div id="kpiCurrentAngle" class="text-lg sm:text-xl font-bold text-teal-900 mt-0.5">5.0&deg;</div>
+          <div class="text-[11px] text-teal-700">En t = <span id="kpiCurrentT">0.00 s</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Panel principal: Controles + Visualización biomecánica + Gráfica Canvas -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <!-- Columna Izquierda: Controles de variables y animación de rodilla -->
+      <div class="lg:col-span-4 space-y-6">
+        <!-- Controles paramétricos -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-bold text-slate-900">Parámetros del Modelo</h2>
+            <span class="text-xs px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-800 font-semibold">Variables</span>
+          </div>
+
+          <!-- Amplitud A -->
+          <div class="space-y-1.5">
+            <div class="flex justify-between items-center text-xs sm:text-sm">
+              <label for="sliderA" class="font-semibold text-slate-700">Amplitud (A)</label>
+              <div class="flex items-center gap-1">
+                <input id="inputA" type="number" min="5" max="50" step="1" value="30" class="w-16 px-2 py-1 text-right font-mono text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-teal-600" />
+                <span class="text-slate-500 font-medium">&deg;</span>
+              </div>
+            </div>
+            <input id="sliderA" type="range" min="5" max="50" step="1" value="30" class="w-full" />
+            <p class="text-[11px] text-slate-400">Mitad del arco total de flexo-extensión (Base: 30&deg;).</p>
+          </div>
+
+          <!-- Línea media D -->
+          <div class="space-y-1.5">
+            <div class="flex justify-between items-center text-xs sm:text-sm">
+              <label for="sliderD" class="font-semibold text-slate-700">Línea media / Desplazamiento (D)</label>
+              <div class="flex items-center gap-1">
+                <input id="inputD" type="number" min="10" max="80" step="1" value="35" class="w-16 px-2 py-1 text-right font-mono text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-teal-600" />
+                <span class="text-slate-500 font-medium">&deg;</span>
+              </div>
+            </div>
+            <input id="sliderD" type="range" min="10" max="80" step="1" value="35" class="w-full" />
+            <p class="text-[11px] text-slate-400">Eje central de oscilación articular (Base: 35&deg;).</p>
+          </div>
+
+          <!-- Período T (y frecuencia angular B) -->
+          <div class="space-y-1.5">
+            <div class="flex justify-between items-center text-xs sm:text-sm">
+              <label for="sliderT" class="font-semibold text-slate-700">Período del ciclo (T)</label>
+              <div class="flex items-center gap-1">
+                <input id="inputT" type="number" min="0.5" max="2.5" step="0.05" value="1.00" class="w-16 px-2 py-1 text-right font-mono text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-teal-600" />
+                <span class="text-slate-500 font-medium">s</span>
+              </div>
+            </div>
+            <input id="sliderT" type="range" min="0.5" max="2.5" step="0.05" value="1.00" class="w-full" />
+            <p class="text-[11px] text-slate-400">Frecuencia angular <span class="font-mono font-semibold text-slate-600">B = 2&pi;/T = <span id="labelBValue">6.28</span> rad/s</span> (Base: T = 1.00 s).</p>
+          </div>
+
+          <!-- Desfase C -->
+          <div class="space-y-1.5">
+            <div class="flex justify-between items-center text-xs sm:text-sm">
+              <label for="selectC" class="font-semibold text-slate-700">Desfase inicial (C)</label>
+              <span id="labelCValue" class="font-mono text-xs font-semibold text-teal-800 bg-teal-50 px-2 py-0.5 rounded-md">&pi; rad (3.14)</span>
+            </div>
+            <select id="selectC" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-xl bg-white focus:outline-none focus:border-teal-600">
+              <option value="0">0 rad (Inicia en máximo)</option>
+              <option value="1.5707963267948966">&pi;/2 rad (Inicia en línea media bajando)</option>
+              <option value="3.141592653589793" selected>&pi; rad (Modelo base: inicia en mínimo 5&deg;)</option>
+              <option value="4.71238898038469">3&pi;/2 rad (Inicia en línea media subiendo)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Simulador esquemático animado de articulación de rodilla -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-base font-bold text-slate-900">Animación Biomecánica</h2>
+              <p class="text-xs text-slate-500">Flexión angular en tiempo real &theta;(t)</p>
+            </div>
+            <button id="btnPlayPause" class="px-3.5 py-2 rounded-xl bg-blue-900 hover:bg-blue-800 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition">
+              <svg id="iconPlay" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
+              </svg>
+              <span id="btnPlayText">Simular marcha</span>
+            </button>
+          </div>
+
+          <div class="bg-slate-50 rounded-xl border border-slate-200 p-2 flex justify-center">
+            <canvas id="kneeCanvas" width="320" height="210" class="max-w-full h-auto rounded-lg"></canvas>
+          </div>
+
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs font-medium text-slate-600">
+              <span>Tiempo t: <strong id="timeSliderLabel" class="font-mono text-slate-900">0.00 s</strong></span>
+              <span>Fase: <strong id="phaseLabel" class="text-teal-700">Apoyo inicial (Mínimo)</strong></span>
+            </div>
+            <input id="sliderTime" type="range" min="-0.5" max="2.0" step="0.01" value="0.00" class="w-full" />
+            <div class="flex justify-between text-[10px] text-slate-400 font-mono">
+              <span>-0.50 s</span>
+              <span>0.00 s</span>
+              <span>0.50 s</span>
+              <span>1.00 s</span>
+              <span>1.50 s</span>
+              <span>2.00 s</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Columna Derecha: Gráfica interactiva + Tabla de 10 puntos -->
+      <div class="lg:col-span-8 space-y-6">
+        <!-- Tarjeta de Gráfica -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <div>
+              <h2 class="text-base sm:text-lg font-bold text-slate-900">Gráfica de la Función &theta;(t)</h2>
+              <p class="text-xs text-slate-500">Pasa el cursor o toca la curva para inspeccionar coordenadas exactas (t, argumento, &theta;).</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <label class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 bg-slate-100 px-3 py-2 rounded-xl cursor-pointer select-none">
+                <input id="chkCompareBase" type="checkbox" class="rounded text-teal-600 focus:ring-0" />
+                <span>Superponer modelo base (2026)</span>
+              </label>
+              <button id="btnDownloadPng" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold flex items-center gap-1.5 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+                Descargar PNG
+              </button>
+            </div>
+          </div>
+
+          <div class="canvas-container bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <canvas id="graphCanvas"></canvas>
+            <!-- Tooltip flotante -->
+            <div id="graphTooltip" class="hidden pointer-events-none absolute z-10 bg-slate-900/95 text-white text-xs rounded-xl px-3 py-2 shadow-lg border border-slate-700 space-y-0.5">
+              <div class="font-bold text-teal-300" id="ttPoint">Punto</div>
+              <div>t = <span id="ttT" class="font-mono">0.00 s</span></div>
+              <div>Arg = <span id="ttArg" class="font-mono">&pi; rad</span></div>
+              <div>&theta;(t) = <span id="ttTheta" class="font-mono font-bold text-amber-300">5.0&deg;</span></div>
+            </div>
+          </div>
+
+          <!-- Leyenda visual -->
+          <div class="flex flex-wrap items-center justify-center gap-4 sm:gap-6 mt-3 pt-3 border-t border-slate-100 text-xs text-slate-600">
+            <div class="flex items-center gap-1.5">
+              <span class="w-4 h-1 bg-teal-800 rounded-full inline-block"></span>
+              <span>Curva activa &theta;(t)</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="w-4 h-0.5 border-t-2 border-dashed border-slate-400 inline-block"></span>
+              <span>Línea media y = D</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-rose-600 inline-block"></span>
+              <span>Máximos</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span>
+              <span>Puntos medios</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block"></span>
+              <span>Mínimos</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="w-4 h-1 bg-blue-600 rounded-full inline-block"></span>
+              <span>Período T</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabla dinámica de 10 puntos (A - J) -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+            <div>
+              <h2 class="text-base font-bold text-slate-900">Tabla de Tabulación Dinámica (Puntos A – J)</h2>
+              <p class="text-xs text-slate-500">Evaluación en cuartos de período (paso = T/4) con argumento en radianes y ángulo en grados.</p>
+            </div>
+            <span id="tableStepBadge" class="text-xs font-mono font-semibold bg-slate-100 text-slate-700 px-3 py-1 rounded-lg">
+              Paso: 0.25 s (T/4)
+            </span>
+          </div>
+
+          <div class="overflow-x-auto rounded-xl border border-slate-200">
+            <table class="w-full text-xs sm:text-sm text-center border-collapse">
+              <thead>
+                <tr class="bg-blue-950 text-white">
+                  <th class="py-2.5 px-3 font-semibold">Punto</th>
+                  <th class="py-2.5 px-3 font-semibold">t (s)</th>
+                  <th class="py-2.5 px-3 font-semibold">Argumento Bt + C (rad)</th>
+                  <th class="py-2.5 px-3 font-semibold">Ángulo &theta;(t) (&deg;)</th>
+                  <th class="py-2.5 px-3 font-semibold">Par ordenado (t ; &theta;(t))</th>
+                </tr>
+              </thead>
+              <tbody id="pointsTableBody" class="divide-y divide-slate-200 bg-white">
+                <!-- Generado dinámicamente por JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sección Longitudinal 2015 - 2026 -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6 space-y-5">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-slate-100 pb-4">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-teal-700">Serie Histórica Clínica (2015 – 2026)</span>
+          <h2 class="text-lg sm:text-xl font-bold text-slate-900 mt-0.5">
+            Evolución de Protocolos de Rehabilitación de Rodilla (2015–2026)
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-500 mt-1">
+            Selecciona un año para cargar en el simulador los parámetros promedio de flexión en marcha asistida registrados en consulta fisioterapéutica y observar su evolución hacia el estándar seguro actual (5&deg;–65&deg;).
+          </p>
+        </div>
+
+        <!-- Selector rápido de año -->
+        <div class="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200 self-start">
+          <label for="yearSelect" class="text-xs font-semibold text-slate-700 pl-2">Año seleccionado:</label>
+          <select id="yearSelect" class="px-3 py-1.5 rounded-lg bg-blue-950 text-white text-xs sm:text-sm font-bold focus:outline-none cursor-pointer">
+            <!-- Opciones 2015-2026 -->
+          </select>
+        </div>
+      </div>
+
+      <!-- Botonera rápida de años 2015-2026 -->
+      <div id="yearButtonsGrid" class="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-2">
+        <!-- Botones generados por JS -->
+      </div>
+
+      <!-- Nota clínica del año seleccionado -->
+      <div id="yearClinicalNote" class="p-4 rounded-xl bg-blue-50/70 border border-blue-200 text-xs sm:text-sm text-blue-950 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <span class="font-bold" id="yearNoteTitle">Año 2026 (Modelo Base Actualizado):</span>
+          <span id="yearNoteText">Protocolo estandarizado de marcha funcional postlesión con control estricto anti-hiperextensión (&theta;<sub>mín</sub> = 5&deg;) y flexión óptima de balanceo (&theta;<sub>máx</sub> = 65&deg;) en ciclos rítmicos de T = 1.00 s.</span>
+        </div>
+        <span id="yearStatusPill" class="shrink-0 px-3 py-1 rounded-full bg-emerald-600 text-white text-xs font-semibold">
+          Estándar Óptimo (5&deg; – 65&deg;)
+        </span>
+      </div>
+
+      <!-- Tabla histórica completa 2015-2026 -->
+      <div class="overflow-x-auto rounded-xl border border-slate-200">
+        <table class="w-full text-xs sm:text-sm text-center border-collapse">
+          <thead>
+            <tr class="bg-slate-800 text-white">
+              <th class="py-2.5 px-3 font-semibold">Año</th>
+              <th class="py-2.5 px-3 font-semibold">Pacientes evaluados</th>
+              <th class="py-2.5 px-3 font-semibold">&theta;<sub>mín</sub> apoyo (&deg;)</th>
+              <th class="py-2.5 px-3 font-semibold">&theta;<sub>máx</sub> balanceo (&deg;)</th>
+              <th class="py-2.5 px-3 font-semibold">Amplitud A (&deg;)</th>
+              <th class="py-2.5 px-3 font-semibold">Línea media D (&deg;)</th>
+              <th class="py-2.5 px-3 font-semibold">Período T (s)</th>
+              <th class="py-2.5 px-3 font-semibold">Estado clínico</th>
+              <th class="py-2.5 px-3 font-semibold">Acción</th>
+            </tr>
+          </thead>
+          <tbody id="historicalTableBody" class="divide-y divide-slate-200 bg-white">
+            <!-- Filas 2015-2026 -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-xs text-slate-400">
+    Simulador Académico Interactivo • Matemática para Ciencias de la Salud (UTP) • Modelo base: &theta;(t) = 30cos(2&pi;t + &pi;) + 35
+  </footer>
+
+  <script>
+    // =========================================================================
+    // 1. DATOS LONGITUDINALES CLÍNICOS (2015 - 2026)
+    // =========================================================================
+    const historicalData = [
+      { year: 2015, patients: 118, minAngle: -2, maxAngle: 52, T: 1.25, note: "Protocolo convencional temprano: leve riesgo de hiperextensión (-2°) en apoyo y flexión limitada (52°) por inmovilización prolongada." },
+      { year: 2016, patients: 126, minAngle: -1, maxAngle: 54, T: 1.20, note: "Introducción de goniometría seriada en consulta; persiste ligero déficit de flexión en fase de balanceo (54°)." },
+      { year: 2017, patients: 134, minAngle:  0, maxAngle: 56, T: 1.15, note: "Se elimina la hiperextensión negativa (0° en apoyo) mediante ejercicios de control cuadricipital temprano." },
+      { year: 2018, patients: 142, minAngle:  1, maxAngle: 58, T: 1.15, note: "Incorporación de movilización pasiva controlada; arco dinámico alcanza 57° con mayor simetría de paso." },
+      { year: 2019, patients: 155, minAngle:  2, maxAngle: 60, T: 1.10, note: "Reeducación de marcha temprana asistida; se alcanza el umbral funcional mínimo de 60° en balanceo." },
+      { year: 2020, patients: 130, minAngle:  2, maxAngle: 58, T: 1.15, note: "Adaptación a telerehabilitación guiada; leve retroceso en amplitud máxima promedio (58°) por menor supervisión presencial." },
+      { year: 2021, patients: 148, minAngle:  3, maxAngle: 61, T: 1.10, note: "Protocolos híbridos con pautas rítmicas de cadencia; mejora la estabilidad en apoyo inicial (3°)." },
+      { year: 2022, patients: 162, minAngle:  3, maxAngle: 62, T: 1.05, note: "Optimización del control neuromuscular; el ciclo de paso se acerca a la cadencia fisiológica (1.05 s)." },
+      { year: 2023, patients: 174, minAngle:  4, maxAngle: 63, T: 1.05, note: "Implementación de biofeedback angular en marcha; reducción significativa de compensaciones de cadera." },
+      { year: 2024, patients: 185, minAngle:  4, maxAngle: 64, T: 1.00, note: "Estandarización de cadencia T = 1.00 s y arco dinámico de 60° (4° a 64°) en rehabilitación funcional." },
+      { year: 2025, patients: 196, minAngle:  5, maxAngle: 65, T: 1.00, note: "Consolidación del rango protector 5°–65° sin hiperextensión, alineado con los parámetros biomecánicos de Perry." },
+      { year: 2026, patients: 210, minAngle:  5, maxAngle: 65, T: 1.00, note: "Modelo base vigente: θ(t) = 30cos(2πt + π) + 35. Rango óptimo seguro [5°, 65°], línea media 35° y período T = 1.00 s." }
+    ];
+
+    // =========================================================================
+    // 2. ESTADO DEL SIMULADOR
+    // =========================================================================
+    const state = {
+      A: 30,
+      D: 35,
+      T: 1.00,
+      C: Math.PI,
+      t: 0.00,
+      isPlaying: false,
+      selectedYear: 2026,
+      compareBase: false,
+      hoverData: null
+    };
+
+    // Referencias DOM
+    const sliderA = document.getElementById('sliderA');
+    const inputA = document.getElementById('inputA');
+    const sliderD = document.getElementById('sliderD');
+    const inputD = document.getElementById('inputD');
+    const sliderT = document.getElementById('sliderT');
+    const inputT = document.getElementById('inputT');
+    const selectC = document.getElementById('selectC');
+    const sliderTime = document.getElementById('sliderTime');
+    const chkCompareBase = document.getElementById('chkCompareBase');
+    const yearSelect = document.getElementById('yearSelect');
+
+    const graphCanvas = document.getElementById('graphCanvas');
+    const gCtx = graphCanvas.getContext('2d');
+    const kneeCanvas = document.getElementById('kneeCanvas');
+    const kCtx = kneeCanvas.getContext('2d');
+
+    // =========================================================================
+    // 3. FUNCIONES MATEMÁTICAS AUXILIARES
+    // =========================================================================
+    function getB() {
+      return (2 * Math.PI) / state.T;
+    }
+
+    function evalTheta(t, A = state.A, B = getB(), C = state.C, D = state.D) {
+      return A * Math.cos(B * t + C) + D;
+    }
+
+    function formatPiFraction(rad) {
+      const ratio = rad / Math.PI;
+      if (Math.abs(ratio) < 1e-6) return "0";
+      const halves = Math.round(ratio * 2);
+      if (Math.abs(ratio * 2 - halves) < 0.02) {
+        if (halves === 1) return "π/2";
+        if (halves === -1) return "-π/2";
+        if (halves % 2 === 0) {
+          const k = halves / 2;
+          if (k === 1) return "π";
+          if (k === -1) return "-π";
+          return `${k}π`;
+        }
+        return `${halves}π/2`;
+      }
+      return `${rad.toFixed(2)}`;
+    }
+
+    function formatTimeFraction(tVal) {
+      // Si es múltiplo exacto de 0.25, muestra fracción y decimal como en el informe
+      const quarters = Math.round(tVal * 4);
+      if (Math.abs(tVal * 4 - quarters) < 1e-5) {
+        if (quarters === 0) return "0";
+        if (quarters % 4 === 0) return `${quarters / 4}`;
+        if (quarters % 2 === 0) {
+          const num = quarters / 2;
+          return `${num}/2 (${tVal.toFixed(2)})`;
+        }
+        return `${quarters}/4 (${tVal.toFixed(2)})`;
+      }
+      return tVal.toFixed(2);
+    }
+
+    // =========================================================================
+    // 4. ACTUALIZACIÓN DE INTERFAZ Y TABLAS
+    // =========================================================================
+    function updateAll() {
+      const B = getB();
+      const minVal = state.D - state.A;
+      const maxVal = state.D + state.A;
+      const currentTheta = evalTheta(state.t);
+
+      // Actualizar controles sincronizados
+      sliderA.value = state.A;
+      inputA.value = state.A;
+      sliderD.value = state.D;
+      inputD.value = state.D;
+      sliderT.value = state.T.toFixed(2);
+      inputT.value = state.T.toFixed(2);
+      sliderTime.value = state.t.toFixed(2);
+
+      // Etiquetas de parámetros
+      document.getElementById('labelBValue').textContent = B.toFixed(2);
+      document.getElementById('labelCValue').textContent = `${formatPiFraction(state.C)} rad (${state.C.toFixed(2)})`;
+
+      // Ecuación principal
+      const bStr = Math.abs(state.T - 1.0) < 1e-4 ? "2π" : `${(2 / state.T).toFixed(2)}π`;
+      const cStr = formatPiFraction(state.C);
+      const cPart = cStr === "0" ? "" : ` + ${cStr}`;
+      document.getElementById('equationDisplay').textContent =
+        `θ(t) = ${state.A} · cos(${bStr}t${cPart}) + ${state.D}`;
+
+      // KPIs
+      document.getElementById('kpiMin').textContent = `${minVal.toFixed(1)}°`;
+      document.getElementById('kpiMid').textContent = `${state.D.toFixed(1)}°`;
+      document.getElementById('kpiMax').textContent = `${maxVal.toFixed(1)}°`;
+      document.getElementById('kpiAmp').textContent = `${state.A.toFixed(1)}°`;
+      document.getElementById('kpiRom').textContent = `${(maxVal - minVal).toFixed(1)}°`;
+      document.getElementById('kpiPeriod').textContent = `${state.T.toFixed(2)} s`;
+      document.getElementById('kpiFreqB').textContent = `${bStr} rad/s`;
+      document.getElementById('kpiCurrentAngle').textContent = `${currentTheta.toFixed(1)}°`;
+      document.getElementById('kpiCurrentT').textContent = `${state.t.toFixed(2)} s`;
+
+      // Alerta clínica
+      const alertBadge = document.getElementById('clinicalAlertBadge');
+      if (minVal < 0) {
+        alertBadge.className = "inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-rose-50 border border-rose-300 text-rose-800 text-xs sm:text-sm font-semibold";
+        alertBadge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping"></span><span>¡Alerta clínica! Hiperextensión detectada (θ<sub>mín</sub> = ${minVal.toFixed(1)}° &lt; 0°)</span>`;
+      } else if (maxVal > 75) {
+        alertBadge.className = "inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-amber-50 border border-amber-300 text-amber-800 text-xs sm:text-sm font-semibold";
+        alertBadge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span><span>Flexión elevada (${maxVal.toFixed(1)}°): supera el rango estándar de marcha (65°)</span>`;
+      } else {
+        alertBadge.className = "inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs sm:text-sm font-medium";
+        alertBadge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span><span>Rango seguro sin hiperextensión (θ<sub>mín</sub> = ${minVal.toFixed(1)}° ≥ 0°)</span>`;
+      }
+
+      // Tiempo y fase actual
+      document.getElementById('timeSliderLabel').textContent = `${state.t.toFixed(2)} s`;
+      const phaseLabel = document.getElementById('phaseLabel');
+      const norm = (currentTheta - minVal) / (maxVal - minVal || 1);
+      if (norm <= 0.15) {
+        phaseLabel.textContent = "Apoyo inicial (Mínima flexión)";
+        phaseLabel.className = "text-emerald-700 font-bold";
+      } else if (norm >= 0.85) {
+        phaseLabel.textContent = "Fase de balanceo (Máxima flexión)";
+        phaseLabel.className = "text-rose-600 font-bold";
+      } else {
+        phaseLabel.textContent = "Transición / Línea media";
+        phaseLabel.className = "text-amber-600 font-bold";
+      }
+
+      updatePointsTable();
+      drawGraph();
+      drawKneeDiagram(currentTheta);
+    }
+
+    // Tabla de 10 puntos A - J
+    function updatePointsTable() {
+      const tbody = document.getElementById('pointsTableBody');
+      const labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+      const step = state.T / 4;
+      const tStart = -0.5 * state.T;
+      const B = getB();
+
+      document.getElementById('tableStepBadge').textContent = `Paso: ${step.toFixed(2)} s (T/4)`;
+
+      let html = '';
+      for (let i = 0; i < 10; i++) {
+        const tVal = tStart + i * step;
+        const arg = B * tVal + state.C;
+        const theta = evalTheta(tVal);
+        const minVal = state.D - state.A;
+        const maxVal = state.D + state.A;
+
+        let badgeClass = "bg-amber-100 text-amber-800";
+        if (Math.abs(theta - maxVal) < 0.2) badgeClass = "bg-rose-100 text-rose-800";
+        else if (Math.abs(theta - minVal) < 0.2) badgeClass = "bg-emerald-100 text-emerald-800";
+
+        html += `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="py-2 px-3 font-bold text-slate-900">${labels[i]}</td>
+            <td class="py-2 px-3 font-mono text-slate-700">${formatTimeFraction(tVal)}</td>
+            <td class="py-2 px-3 font-mono text-indigo-900 font-medium">${formatPiFraction(arg)}</td>
+            <td class="py-2 px-3">
+              <span class="inline-block px-2.5 py-0.5 rounded-full font-mono font-bold text-xs ${badgeClass}">
+                ${theta.toFixed(1)}°
+              </span>
+            </td>
+            <td class="py-2 px-3 font-mono text-slate-600">(${tVal.toFixed(2)} ; ${theta.toFixed(1)})</td>
+          </tr>
+        `;
+      }
+      tbody.innerHTML = html;
+    }
+
+    // =========================================================================
+    // 5. GRÁFICA EN HTML5 CANVAS
+    // =========================================================================
+    function resizeGraphCanvas() {
+      const rect = graphCanvas.parentElement.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      graphCanvas.width = rect.width * dpr;
+      graphCanvas.height = rect.height * dpr;
+      gCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      drawGraph();
+    }
+
+    function drawGraph() {
+      const rect = graphCanvas.parentElement.getBoundingClientRect();
+      const width = rect.width;
+      const height = rect.height;
+
+      gCtx.clearRect(0, 0, width, height);
+
+      // Fondo blanco limpio (ideal también al exportar PNG)
+      gCtx.fillStyle = "#ffffff";
+      gCtx.fillRect(0, 0, width, height);
+
+      const pad = { top: 36, right: 28, bottom: 48, left: 56 };
+      const plotW = width - pad.left - pad.right;
+      const plotH = height - pad.top - pad.bottom;
+
+      const xMin = -0.75;
+      const xMax = 2.00;
+      const yMin = -10;
+      const yMax = 85;
+
+      const toX = (x) => pad.left + ((x - xMin) / (xMax - xMin)) * plotW;
+      const toY = (y) => pad.top + ((yMax - y) / (yMax - yMin)) * plotH;
+
+      // Cuadrícula vertical (cada 0.25 s)
+      gCtx.lineWidth = 1;
+      for (let x = -0.75; x <= 2.001; x += 0.25) {
+        const px = toX(x);
+        gCtx.strokeStyle = Math.abs(x) < 1e-5 ? "#64748b" : "#e2e8f0";
+        gCtx.lineWidth = Math.abs(x) < 1e-5 ? 1.5 : 1;
+        gCtx.beginPath();
+        gCtx.moveTo(px, pad.top);
+        gCtx.lineTo(px, pad.top + plotH);
+        gCtx.stroke();
+
+        // Etiqueta eje X
+        gCtx.fillStyle = "#475569";
+        gCtx.font = "11px Inter, sans-serif";
+        gCtx.textAlign = "center";
+        gCtx.fillText(x % 0.5 === 0 ? x.toFixed(1) : x.toFixed(2), px, pad.top + plotH + 18);
+      }
+
+      // Cuadrícula horizontal (cada 10°)
+      for (let y = -10; y <= 85; y += 10) {
+        const py = toY(y);
+        gCtx.strokeStyle = y === 0 ? "#64748b" : "#e2e8f0";
+        gCtx.lineWidth = y === 0 ? 1.5 : 1;
+        gCtx.beginPath();
+        gCtx.moveTo(pad.left, py);
+        gCtx.lineTo(pad.left + plotW, py);
+        gCtx.stroke();
+
+        gCtx.fillStyle = "#475569";
+        gCtx.font = "11px Inter, sans-serif";
+        gCtx.textAlign = "right";
+        gCtx.fillText(`${y}°`, pad.left - 8, py + 4);
+      }
+
+      // Zona de hiperextensión (y < 0°) sombreada suavemente
+      if (yMin < 0) {
+        gCtx.fillStyle = "rgba(225, 29, 72, 0.06)";
+        gCtx.fillRect(pad.left, toY(0), plotW, toY(yMin) - toY(0));
+        gCtx.fillStyle = "#be123c";
+        gCtx.font = "600 10px Inter, sans-serif";
+        gCtx.textAlign = "right";
+        gCtx.fillText("Zona de hiperextensión (< 0°)", pad.left + plotW - 8, toY(-5) + 3);
+      }
+
+      // Títulos de ejes
+      gCtx.fillStyle = "#0f172a";
+      gCtx.font = "600 12px Inter, sans-serif";
+      gCtx.textAlign = "center";
+      gCtx.fillText("Tiempo t (s)", pad.left + plotW / 2, height - 10);
+
+      gCtx.save();
+      gCtx.translate(16, pad.top + plotH / 2);
+      gCtx.rotate(-Math.PI / 2);
+      gCtx.fillText("Ángulo θ(t) (°)", 0, 0);
+      gCtx.restore();
+
+      // Título superior en el canvas
+      gCtx.font = "700 13px Inter, sans-serif";
+      gCtx.fillStyle = "#0f172a";
+      gCtx.textAlign = "left";
+      gCtx.fillText(`Modelo activo: ${document.getElementById('equationDisplay').textContent}  |  Año: ${state.selectedYear}`, pad.left, 20);
+
+      // Línea media punteada y = D
+      const yMidPx = toY(state.D);
+      gCtx.save();
+      gCtx.setLineDash([6, 5]);
+      gCtx.strokeStyle = "#64748b";
+      gCtx.lineWidth = 1.5;
+      gCtx.beginPath();
+      gCtx.moveTo(pad.left, yMidPx);
+      gCtx.lineTo(pad.left + plotW, yMidPx);
+      gCtx.stroke();
+      gCtx.restore();
+
+      gCtx.fillStyle = "#334155";
+      gCtx.font = "600 11px Inter, sans-serif";
+      gCtx.textAlign = "left";
+      gCtx.fillText(`y = ${state.D}° (línea media)`, pad.left + 8, yMidPx - 6);
+
+      // Curva de comparación (Modelo Base 2026) si está activada
+      if (state.compareBase) {
+        gCtx.save();
+        gCtx.setLineDash([4, 4]);
+        gCtx.strokeStyle = "#94a3b8";
+        gCtx.lineWidth = 2;
+        gCtx.beginPath();
+        for (let px = 0; px <= plotW; px += 2) {
+          const tVal = xMin + (px / plotW) * (xMax - xMin);
+          const yVal = 30 * Math.cos(2 * Math.PI * tVal + Math.PI) + 35;
+          const cy = toY(yVal);
+          if (px === 0) gCtx.moveTo(pad.left + px, cy);
+          else gCtx.lineTo(pad.left + px, cy);
+        }
+        gCtx.stroke();
+        gCtx.restore();
+      }
+
+      // Curva principal activa θ(t)
+      gCtx.strokeStyle = "#115e59";
+      gCtx.lineWidth = 3;
+      gCtx.beginPath();
+      for (let px = 0; px <= plotW; px += 1.5) {
+        const tVal = xMin + (px / plotW) * (xMax - xMin);
+        const yVal = evalTheta(tVal);
+        const cy = toY(yVal);
+        if (px === 0) gCtx.moveTo(pad.left + px, cy);
+        else gCtx.lineTo(pad.left + px, cy);
+      }
+      gCtx.stroke();
+
+      // Indicador horizontal del Período T
+      const tP1 = -0.5 * state.T;
+      const tP2 = tP1 + state.T;
+      const maxAngle = state.D + state.A;
+      const yPeriodBar = toY(Math.min(maxAngle + 5, 80));
+      if (tP1 >= xMin && tP2 <= xMax) {
+        const x1 = toX(tP1);
+        const x2 = toX(tP2);
+        gCtx.strokeStyle = "#2563eb";
+        gCtx.lineWidth = 2.5;
+        gCtx.beginPath();
+        gCtx.moveTo(x1, yPeriodBar);
+        gCtx.lineTo(x2, yPeriodBar);
+        gCtx.stroke();
+
+        // Extremos del segmento período
+        [x1, x2].forEach(xp => {
+          gCtx.fillStyle = "#2563eb";
+          gCtx.beginPath();
+          gCtx.arc(xp, yPeriodBar, 4, 0, Math.PI * 2);
+          gCtx.fill();
+        });
+
+        gCtx.fillStyle = "#1d4ed8";
+        gCtx.font = "700 11px Inter, sans-serif";
+        gCtx.textAlign = "center";
+        gCtx.fillText(`Período T = ${state.T.toFixed(2)} s`, (x1 + x2) / 2, yPeriodBar - 7);
+      }
+
+      // Dibujar los 10 puntos A - J
+      const labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+      const step = state.T / 4;
+      const tStart = -0.5 * state.T;
+      const minAngle = state.D - state.A;
+
+      for (let i = 0; i < 10; i++) {
+        const tVal = tStart + i * step;
+        if (tVal < xMin || tVal > xMax) continue;
+        const yVal = evalTheta(tVal);
+        const cx = toX(tVal);
+        const cy = toY(yVal);
+
+        let color = "#d97706"; // medio
+        if (Math.abs(yVal - maxAngle) < 0.2) color = "#dc2626";
+        else if (Math.abs(yVal - minAngle) < 0.2) color = "#059669";
+
+        gCtx.fillStyle = color;
+        gCtx.beginPath();
+        gCtx.arc(cx, cy, 5, 0, Math.PI * 2);
+        gCtx.fill();
+        gCtx.strokeStyle = "#ffffff";
+        gCtx.lineWidth = 1.5;
+        gCtx.stroke();
+
+        // Etiqueta de letra
+        gCtx.fillStyle = color;
+        gCtx.font = "700 11px Inter, sans-serif";
+        gCtx.textAlign = "center";
+        const offsetY = Math.abs(yVal - minAngle) < 0.2 ? 16 : -10;
+        gCtx.fillText(labels[i], cx, cy + offsetY);
+      }
+
+      // Marcador vertical del tiempo t actual de animación
+      if (state.t >= xMin && state.t <= xMax) {
+        const curX = toX(state.t);
+        const curY = toY(evalTheta(state.t));
+
+        gCtx.save();
+        gCtx.setLineDash([3, 3]);
+        gCtx.strokeStyle = "#0284c7";
+        gCtx.lineWidth = 1.5;
+        gCtx.beginPath();
+        gCtx.moveTo(curX, pad.top);
+        gCtx.lineTo(curX, pad.top + plotH);
+        gCtx.stroke();
+        gCtx.restore();
+
+        gCtx.fillStyle = "#0284c7";
+        gCtx.beginPath();
+        gCtx.arc(curX, curY, 6.5, 0, Math.PI * 2);
+        gCtx.fill();
+        gCtx.strokeStyle = "#ffffff";
+        gCtx.lineWidth = 2;
+        gCtx.stroke();
+      }
+    }
+
+    // =========================================================================
+    // 6. DIAGRAMA BIOMECÁNICO ANIMADO DE LA RODILLA
+    // =========================================================================
+    function drawKneeDiagram(angleDeg) {
+      const w = kneeCanvas.width;
+      const h = kneeCanvas.height;
+      kCtx.clearRect(0, 0, w, h);
+
+      // Fondo
+      kCtx.fillStyle = "#f8fafc";
+      kCtx.fillRect(0, 0, w, h);
+
+      // Posición de cadera y rodilla
+      const hipX = 115;
+      const hipY = 48;
+      const thighLen = 74;
+      const shinLen = 74;
+
+      // Muslo ligeramente inclinado hacia adelante en marcha
+      const thighAngle = (12 * Math.PI) / 180;
+      const kneeX = hipX + Math.sin(thighAngle) * thighLen;
+      const kneeY = hipY + Math.cos(thighAngle) * thighLen;
+
+      // La pierna (tibia) se flexiona hacia atrás según angleDeg
+      const shinAngle = thighAngle - (angleDeg * Math.PI) / 180;
+      const ankleX = kneeX + Math.sin(shinAngle) * shinLen;
+      const ankleY = kneeY + Math.cos(shinAngle) * shinLen;
+
+      // Línea de referencia de extensión completa (0°)
+      const extX = kneeX + Math.sin(thighAngle) * (shinLen + 14);
+      const extY = kneeY + Math.cos(thighAngle) * (shinLen + 14);
+      kCtx.save();
+      kCtx.setLineDash([4, 4]);
+      kCtx.strokeStyle = "#94a3b8";
+      kCtx.lineWidth = 1.5;
+      kCtx.beginPath();
+      kCtx.moveTo(kneeX, kneeY);
+      kCtx.lineTo(extX, extY);
+      kCtx.stroke();
+      kCtx.restore();
+
+      // Arco del ángulo θ(t)
+      kCtx.strokeStyle = angleDeg < 0 ? "#e11d48" : "#0d9488";
+      kCtx.lineWidth = 2.5;
+      kCtx.beginPath();
+      const startArc = Math.PI / 2 - thighAngle;
+      const endArc = Math.PI / 2 - shinAngle;
+      kCtx.arc(kneeX, kneeY, 32, Math.min(startArc, endArc), Math.max(startArc, endArc));
+      kCtx.stroke();
+
+      // Muslo (Fémur)
+      kCtx.strokeStyle = "#1e3a8a";
+      kCtx.lineWidth = 14;
+      kCtx.lineCap = "round";
+      kCtx.beginPath();
+      kCtx.moveTo(hipX, hipY);
+      kCtx.lineTo(kneeX, kneeY);
+      kCtx.stroke();
+
+      // Pierna (Tibia/Peroné)
+      kCtx.strokeStyle = angleDeg < 0 ? "#be123c" : "#0f766e";
+      kCtx.lineWidth = 11;
+      kCtx.beginPath();
+      kCtx.moveTo(kneeX, kneeY);
+      kCtx.lineTo(ankleX, ankleY);
+      kCtx.stroke();
+
+      // Pie esquemático
+      const footLen = 26;
+      const footAngle = shinAngle + Math.PI / 2;
+      kCtx.strokeStyle = "#334155";
+      kCtx.lineWidth = 7;
+      kCtx.beginPath();
+      kCtx.moveTo(ankleX, ankleY);
+      kCtx.lineTo(ankleX + Math.sin(footAngle) * footLen, ankleY + Math.cos(footAngle) * footLen);
+      kCtx.stroke();
+
+      // Articulaciones (Cadera, Rodilla, Tobillo)
+      [
+        { x: hipX, y: hipY, r: 7, c: "#1e3a8a" },
+        { x: kneeX, y: kneeY, r: 8, c: angleDeg < 0 ? "#e11d48" : "#f59e0b" },
+        { x: ankleX, y: ankleY, r: 5, c: "#334155" }
+      ].forEach(j => {
+        kCtx.fillStyle = j.c;
+        kCtx.beginPath();
+        kCtx.arc(j.x, j.y, j.r, 0, Math.PI * 2);
+        kCtx.fill();
+        kCtx.strokeStyle = "#ffffff";
+        kCtx.lineWidth = 2;
+        kCtx.stroke();
+      });
+
+      // Textos informativos en el panel de rodilla
+      kCtx.fillStyle = "#0f172a";
+      kCtx.font = "700 13px Inter, sans-serif";
+      kCtx.textAlign = "left";
+      kCtx.fillText(`Flexión θ(t) = ${angleDeg.toFixed(1)}°`, 185, 42);
+
+      kCtx.fillStyle = "#64748b";
+      kCtx.font = "11px Inter, sans-serif";
+      kCtx.fillText("Línea punteada: 0°", 185, 62);
+      kCtx.fillText(angleDeg < 0 ? "Estado: Hiperextensión" : "Estado: Rango fisiológico", 185, 80);
+    }
+
+    // =========================================================================
+    // 7. RENDERIZADO DE SECCIÓN HISTÓRICA 2015 - 2026
+    // =========================================================================
+    function initHistoricalSection() {
+      const btnGrid = document.getElementById('yearButtonsGrid');
+      const tbody = document.getElementById('historicalTableBody');
+
+      yearSelect.innerHTML = '';
+      btnGrid.innerHTML = '';
+      tbody.innerHTML = '';
+
+      historicalData.forEach(item => {
+        const A = (item.maxAngle - item.minAngle) / 2;
+        const D = (item.maxAngle + item.minAngle) / 2;
+        const isOptimal = item.minAngle >= 5 && item.maxAngle === 65;
+
+        // Option en select
+        const opt = document.createElement('option');
+        opt.value = item.year;
+        opt.textContent = `${item.year} (${item.minAngle}° a ${item.maxAngle}°)`;
+        if (item.year === state.selectedYear) opt.selected = true;
+        yearSelect.appendChild(opt);
+
+        // Botón de año
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.dataset.year = item.year;
+        btn.textContent = item.year;
+        btn.className = `year-btn py-2 px-2 rounded-xl text-xs font-bold border transition ${
+          item.year === state.selectedYear
+            ? 'bg-blue-950 text-white border-blue-950 shadow-sm'
+            : 'bg-white text-slate-700 border-slate-200 hover:border-teal-600 hover:text-teal-800'
+        }`;
+        btn.addEventListener('click', () => loadYearData(item.year));
+        btnGrid.appendChild(btn);
+
+        // Fila en tabla histórica
+        const tr = document.createElement('tr');
+        tr.id = `row-year-${item.year}`;
+        tr.className = item.year === state.selectedYear ? 'bg-teal-50/70 font-medium' : 'hover:bg-slate-50';
+        tr.innerHTML = `
+          <td class="py-2.5 px-3 font-bold text-slate-900">${item.year}</td>
+          <td class="py-2.5 px-3 text-slate-600">${item.patients}</td>
+          <td class="py-2.5 px-3 font-mono ${item.minAngle < 0 ? 'text-rose-600 font-bold' : 'text-emerald-700 font-semibold'}">${item.minAngle}°</td>
+          <td class="py-2.5 px-3 font-mono text-slate-800 font-semibold">${item.maxAngle}°</td>
+          <td class="py-2.5 px-3 font-mono text-slate-700">${A.toFixed(1)}°</td>
+          <td class="py-2.5 px-3 font-mono text-slate-700">${D.toFixed(1)}°</td>
+          <td class="py-2.5 px-3 font-mono text-slate-700">${item.T.toFixed(2)} s</td>
+          <td class="py-2.5 px-3">
+            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
+              item.minAngle < 0
+                ? 'bg-rose-100 text-rose-800'
+                : isOptimal
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : 'bg-amber-100 text-amber-800'
+            }">
+              ${item.minAngle < 0 ? 'Hiperextensión' : isOptimal ? 'Óptimo (5°–65°)' : 'En progresión'}
+            </span>
+          </td>
+          <td class="py-2.5 px-3">
+            <button type="button" onclick="loadYearData(${item.year})" class="px-2.5 py-1 rounded-lg bg-blue-900 hover:bg-blue-800 text-white text-[11px] font-semibold transition">
+              Simular
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function loadYearData(year) {
+      const record = historicalData.find(d => d.year === Number(year));
+      if (!record) return;
+
+      state.selectedYear = record.year;
+      state.A = (record.maxAngle - record.minAngle) / 2;
+      state.D = (record.maxAngle + record.minAngle) / 2;
+      state.T = record.T;
+      state.C = Math.PI;
+      selectC.value = String(Math.PI);
+
+      // Actualizar select y estilos de botones/filas
+      yearSelect.value = record.year;
+      document.querySelectorAll('.year-btn').forEach(b => {
+        const active = Number(b.dataset.year) === record.year;
+        b.className = `year-btn py-2 px-2 rounded-xl text-xs font-bold border transition ${
+          active
+            ? 'bg-blue-950 text-white border-blue-950 shadow-sm'
+            : 'bg-white text-slate-700 border-slate-200 hover:border-teal-600 hover:text-teal-800'
+        }`;
+      });
+
+      historicalData.forEach(d => {
+        const row = document.getElementById(`row-year-${d.year}`);
+        if (row) {
+          row.className = d.year === record.year ? 'bg-teal-50/80 font-medium' : 'hover:bg-slate-50';
+        }
+      });
+
+      // Actualizar nota clínica
+      document.getElementById('yearNoteTitle').textContent = `Año ${record.year} (${record.patients} pacientes evaluados): `;
+      document.getElementById('yearNoteText').textContent = record.note;
+
+      const pill = document.getElementById('yearStatusPill');
+      if (record.minAngle < 0) {
+        pill.className = "shrink-0 px-3 py-1 rounded-full bg-rose-600 text-white text-xs font-semibold";
+        pill.textContent = `Riesgo Hiperextensión (${record.minAngle}° a ${record.maxAngle}°)`;
+      } else if (record.minAngle >= 5 && record.maxAngle === 65) {
+        pill.className = "shrink-0 px-3 py-1 rounded-full bg-emerald-600 text-white text-xs font-semibold";
+        pill.textContent = `Estándar Óptimo (${record.minAngle}° – ${record.maxAngle}°)`;
+      } else {
+        pill.className = "shrink-0 px-3 py-1 rounded-full bg-amber-600 text-white text-xs font-semibold";
+        pill.textContent = `Progresión Clínica (${record.minAngle}° – ${record.maxAngle}°)`;
+      }
+
+      updateAll();
+    }
+
+    // =========================================================================
+    // 8. EVENTOS DE INTERACCIÓN Y ANIMACIÓN
+    // =========================================================================
+    sliderA.addEventListener('input', e => { state.A = parseFloat(e.target.value); updateAll(); });
+    inputA.addEventListener('change', e => {
+      state.A = Math.min(50, Math.max(5, parseFloat(e.target.value) || 30));
+      updateAll();
+    });
+
+    sliderD.addEventListener('input', e => { state.D = parseFloat(e.target.value); updateAll(); });
+    inputD.addEventListener('change', e => {
+      state.D = Math.min(80, Math.max(10, parseFloat(e.target.value) || 35));
+      updateAll();
+    });
+
+    sliderT.addEventListener('input', e => { state.T = parseFloat(e.target.value); updateAll(); });
+    inputT.addEventListener('change', e => {
+      state.T = Math.min(2.5, Math.max(0.5, parseFloat(e.target.value) || 1.0));
+      updateAll();
+    });
+
+    selectC.addEventListener('change', e => { state.C = parseFloat(e.target.value); updateAll(); });
+    sliderTime.addEventListener('input', e => { state.t = parseFloat(e.target.value); updateAll(); });
+    chkCompareBase.addEventListener('change', e => { state.compareBase = e.target.checked; drawGraph(); });
+    yearSelect.addEventListener('change', e => loadYearData(e.target.value));
+
+    // Botón restaurar modelo base
+    document.getElementById('btnResetBase').addEventListener('click', () => {
+      state.compareBase = false;
+      chkCompareBase.checked = false;
+      state.t = 0.00;
+      loadYearData(2026);
+    });
+
+    // Animación continua Play/Pause
+    let animFrameId = null;
+    let lastTimestamp = null;
+
+    function animationLoop(timestamp) {
+      if (!state.isPlaying) return;
+      if (lastTimestamp !== null) {
+        const dt = (timestamp - lastTimestamp) / 1000;
+        state.t += dt * 0.75; // velocidad visual cómoda
+        if (state.t > 2.0) state.t = -0.5;
+        updateAll();
+      }
+      lastTimestamp = timestamp;
+      animFrameId = requestAnimationFrame(animationLoop);
+    }
+
+    document.getElementById('btnPlayPause').addEventListener('click', () => {
+      state.isPlaying = !state.isPlaying;
+      const btnText = document.getElementById('btnPlayText');
+      if (state.isPlaying) {
+        btnText.textContent = "Pausar";
+        lastTimestamp = null;
+        animFrameId = requestAnimationFrame(animationLoop);
+      } else {
+        btnText.textContent = "Simular marcha";
+        if (animFrameId) cancelAnimationFrame(animFrameId);
+      }
+    });
+
+    // Tooltip interactivo sobre la gráfica
+    const tooltip = document.getElementById('graphTooltip');
+    function handleGraphPointer(clientX, clientY) {
+      const rect = graphCanvas.getBoundingClientRect();
+      const mx = clientX - rect.left;
+      const my = clientY - rect.top;
+
+      const pad = { top: 36, right: 28, bottom: 48, left: 56 };
+      const plotW = rect.width - pad.left - pad.right;
+      const plotH = rect.height - pad.top - pad.bottom;
+
+      if (mx < pad.left || mx > pad.left + plotW || my < pad.top || my > pad.top + plotH) {
+        tooltip.classList.add('hidden');
+        return;
+      }
+
+      const xMin = -0.75, xMax = 2.00;
+      const tHover = xMin + ((mx - pad.left) / plotW) * (xMax - xMin);
+      const argHover = getB() * tHover + state.C;
+      const thetaHover = evalTheta(tHover);
+
+      document.getElementById('ttPoint').textContent = `Lectura en curva (${state.selectedYear})`;
+      document.getElementById('ttT').textContent = `${tHover.toFixed(2)} s`;
+      document.getElementById('ttArg').textContent = `${formatPiFraction(argHover)} rad`;
+      document.getElementById('ttTheta').textContent = `${thetaHover.toFixed(1)}°`;
+
+      tooltip.classList.remove('hidden');
+      const tipX = Math.min(rect.width - 155, mx + 12);
+      const tipY = Math.max(10, my - 65);
+      tooltip.style.left = `${tipX}px`;
+      tooltip.style.top = `${tipY}px`;
+    }
+
+    graphCanvas.addEventListener('mousemove', e => handleGraphPointer(e.clientX, e.clientY));
+    graphCanvas.addEventListener('mouseleave', () => tooltip.classList.add('hidden'));
+    graphCanvas.addEventListener('touchmove', e => {
+      if (e.touches.length > 0) {
+        handleGraphPointer(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, { passive: true });
+    graphCanvas.addEventListener('touchend', () => tooltip.classList.add('hidden'));
+
+    // Descargar gráfica como PNG
+    document.getElementById('btnDownloadPng').addEventListener('click', () => {
+      const link = document.createElement('a');
+      link.download = `Grafica_Rodilla_${state.selectedYear}.png`;
+      link.href = graphCanvas.toDataURL('image/png');
+      link.click();
+    });
+
+    // Inicialización al cargar
+    window.addEventListener('resize', resizeGraphCanvas);
+    window.addEventListener('load', () => {
+      initHistoricalSection();
+      resizeGraphCanvas();
+      loadYearData(2026);
+    });
+  </script>
+</body>
+</html>
